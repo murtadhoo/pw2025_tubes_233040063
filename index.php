@@ -2,7 +2,7 @@
 session_start();
 require 'function.php';
 
-if (!isset($_SESSION['login'])) {
+if (!isset($_SESSION['user'])) {
     header("Location: login.php");
     exit;
 }
@@ -21,8 +21,9 @@ if (isset($_POST["cari"])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Automotive</title>
+    <title>Mazda </title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./css/style.css">
     <style>
         .navbar {
             background-color: #343a40;
@@ -40,7 +41,7 @@ if (isset($_POST["cari"])) {
 <body>
     <nav class="navbar fixed-top">
         <div class="container-fluid">
-            <h2 class="navbar-brand">Admin Automotive</h2>
+            <h2 class="navbar-brand">MAZDA</h2>
             <div class="d-flex">
                 <form class="d-flex" method="post">
                     <input class="form-control me-2" type="search" placeholder="Cari mobil..." name="keyword" autocomplete="off">

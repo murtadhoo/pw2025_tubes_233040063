@@ -72,10 +72,56 @@ function hapus($id)
     return 0;
 }
 
+function ubah($data)
+{
+    $conn = koneksi();
+
+    $id = $data['id'];
+    $gambarLama = $data['gambarLama'];
+
+    // Cek apakah user upload gambar baru
+    if ($_FILES['gambar']['error'] === 4) {
+        $gambar = $gambarLama;
+    } else {
+        // Hapus gambar lama
+        if (file_exists('img/' . $gambarLama)) {
+            unlink('img/' . $gambarLama);
+        }
+
+        // Upload gambar baru
+        $gambar = upload();
+        if (!$gambar) {
+            return false;
+        }
+    }
+
+    $merk = htmlspecialchars($data['merk']);
+    $model = htmlspecialchars($data['model']);
+    $tahun = htmlspecialchars($data['tahun']);
+    $harga = htmlspecialchars($data['harga']);
+    $deskripsi = htmlspecialchars($data['deskripsi']);
+
+    $query = "UPDATE cars SET
+                gambar = '$gambar',
+                merk = '$merk',
+                model = '$model',
+                tahun = '$tahun',
+                harga = '$harga',
+                deskripsi = '$deskripsi'
+              WHERE id = $id";
+
+    mysqli_query($conn, $query);
+    return mysqli_affected_rows($conn);
+}
 function query($query)
 {
     $conn = koneksi();
     $result = mysqli_query($conn, $query);
+
+    if (!$result) {
+        die("Query error: " . mysqli_error($conn));
+    }
+
     $rows = [];
 
     while ($row = mysqli_fetch_assoc($result)) {
@@ -97,32 +143,40 @@ function cari($keyword)
 
 function loginfungsion($data)
 {
-    global $conn;
+    $conn = koneksi();
 
     $username = htmlspecialchars($data["username"]);
     $password = htmlspecialchars($data["password"]);
-    // cek dulu username nya // 
-    $user = query("SELECT * FROM user WHERE username = '$username'");
 
-    if (count($user) > 0) {
+    // Cek username
+    $result = mysqli_query($conn, "SELECT * FROM users WHERE username = '$username'");
+    $user = mysqli_fetch_assoc($result);
 
-        if (password_verify($password, $user[0]['password'])) {
-
+    if ($user) {
+        // Verifikasi password
+        if (password_verify($password, $user['password'])) {
             $_SESSION['login'] = true;
-            $_SESSION['user'] = $user[0];
-            header("Location: index.php");
+            $_SESSION['user'] = [
+                'id' => $user['id'],
+                'username' => $user['username'],
+                'role' => $user['role'] // Simpan role di session
+            ];
 
-
+            // Redirect berdasarkan role
+            if ($user['role'] == 'admin') {
+                header("Location: admin.php");
+            } else {
+                header("Location: index.php");
+            }
             exit;
         }
     }
 
     return [
         'error' => true,
-        'pesan' => 'Username/ Password Salah'
+        'pesan' => 'Username/Password Salah'
     ];
 }
-
 function registrasi($data)
 {
     $conn = koneksi();
@@ -131,46 +185,39 @@ function registrasi($data)
     $password1 = mysqli_real_escape_string($conn, $data['password1']);
     $password2 = mysqli_real_escape_string($conn, $data['password2']);
 
-    if (empty($username) || empty($password1) || empty($password2)) {
+    // Cek username sudah ada
+    if (query("SELECT * FROM users WHERE username = '$username'")) {
         echo "<script>
-                alert('username /password tidak boleh kosong!')
-                document.location.href = 'register.php'
-            </script>";
+                alert('Username sudah terdaftar');
+                document.location.href = 'register.php';
+              </script>";
         return false;
     }
 
-    // jika username sudah ad
-
-    if (query("SELECT * FROM user WHERE username = '$username'")) {
-        echo "<script>
-                alert('username sudah terdaftar')
-                document.location.href = 'register.php'
-            </script>";
-        return false;
-    }
-
+    // Cek konfirmasi password
     if ($password1 !== $password2) {
         echo "<script>
-                alert('konfirmasi password tidak sesuai')
-                document.location.href = 'register.php'
-            </script>";
+                alert('Konfirmasi password tidak sesuai');
+                document.location.href = 'register.php';
+              </script>";
         return false;
     }
 
-    // jika password < 5
+    // Cek panjang password
     if (strlen($password1) < 5) {
         echo "<script>
-                alert('password terlalu pendek')
-                document.location.href = 'register.php'
-            </script>";
+                alert('Password terlalu pendek (minimal 5 karakter)');
+                document.location.href = 'register.php';
+              </script>";
         return false;
     }
 
-    // jika username & password sudah sesuai
+    // Enkripsi password
     $password_baru = password_hash($password1, PASSWORD_DEFAULT);
-    // insert ke tabel user
-    $query = "INSERT INTO user VALUES
-            (null, '$username', '$password_baru')";
-    mysqli_query($conn, $query) or die(mysqli_error($conn));
+
+    // Query INSERT yang sesuai dengan struktur tabel
+    $query = "INSERT INTO users (username, password, role) VALUES ('$username', '$password_baru', 'user')";
+
+    mysqli_query($conn, $query) or die("Error registrasi: " . mysqli_error($conn));
     return mysqli_affected_rows($conn);
 }
